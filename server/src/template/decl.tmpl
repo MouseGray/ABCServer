@@ -1,0 +1,38 @@
+#pragma once
+
+#include <functional>
+#include <string>
+#include <unordered_map>
+
+#include <boost/json.hpp>
+
+#include <auth_service/session.h>
+#include <error.h>
+
+using CallbackType = std::function<void(boost::json::value result, abcserver::Error error)>;
+
+
+namespace abcserver
+{
+
+class DatabaseService;
+
+namespace web_service
+{
+class Connection;
+}
+
+using MethodType   = std::function<void(DatabaseService&,
+                                        web_service::Connection&,
+                                        Session::UserIDType,
+                                        const boost::json::object&,
+                                        CallbackType)>;
+
+[[itr 'methods' '\n';void [[mov 'name';]](DatabaseService&, web_service::Connection&, Session::UserIDType, const boost::json::object&, CallbackType);]]
+
+inline void RegisterMethods(std::unordered_map<std::string, MethodType>& methods)
+{
+    [[itr 'methods' '\n';methods.insert(std::pair<std::string, MethodType>{"[[mov 'name';]]", [[mov 'name';]]});]]
+}
+
+}

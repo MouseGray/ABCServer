@@ -1,0 +1,93 @@
+#include <functional>
+
+#include <boost/json.hpp>
+
+#include <auth_service/session.h>
+#include <web_service/connection.h>
+#include <method_service/parameters.h>
+#include <database_service.h>
+
+namespace abcserver
+{
+
+void [[mov 'function';]](DatabaseService& database_service,
+          web_service::Connection& connection,
+          Session::UserIDType user_id,
+          const boost::json::object& json,
+          std::function<void(boost::json::value result, Error error)> callback)
+{
+    ParameterPack params;
+    // with default
+    [[itr 'params' '\n';
+    [[swc 'param_type' 0;params.Append(method_service::get_as_string<[[mov 'type';]]>(json, "[[mov 'name';]]", "[[mov 'default';]]"));]]
+    [[swc 'param_type' 1;params.Append(method_service::try_get_as_string<[[mov 'type';]]>(json, "[[mov 'name';]]"));]]
+    [[swc 'param_type' 2;params.Append(method_service::get_as_string<[[mov 'type';]]>(json, "[[mov 'name';]]"));]]
+    [[swc 'param_type' 3;params.Append(std::to_string(user_id));]]
+    [[swc 'param_type' 4;auto&& [[mov 'name';]] = json.at("[[mov 'name';]]").as_array();
+    for(auto&& row : [[mov 'name';]]) {
+        [[itr 'subparams' '\n';
+        [[swc 'subparam_type' 0;params.Append(method_service::get_as_string<[[mov 'type';]]>(row.as_object(), "[[mov 'name';]]"));]]
+        [[swc 'subparam_type' 1;params.Append(method_service::try_get_as_string<[[mov 'type';]]>(row.as_object(), "[[mov 'name';]]"));]]
+        ]]
+    }]]]]
+
+    std::string query;
+
+    [[itr 'query' '';
+    [[swc 'query_type' 0;query += u8R"#([[mov 'part';]])#";]]
+    [[swc 'query_type' 1;
+    const int size = [[mov 'size';]];
+    for(int i = 0; i < [[mov 'name';]].size(); ++i) {
+    	if(i + 1 == [[mov 'name';]].size())
+    	        query += std::string{"("} + [[itr 'number' '+","+';"$" + std::to_string(i*size + [[mov 'i';]])]] + ")";
+        else
+                query += std::string{"("} + [[itr 'number' '+","+';"$" + std::to_string(i*size + [[mov 'i';]])]] + "),";
+    }]]
+    ]]
+
+    database_service.AsyncExec(query, params, [callback](Result* result, Error error)
+    {
+        if(error)
+        {
+            callback({}, error);
+            return;
+        }
+        try
+        {
+	[[swc 'json' 0;callback({}, Error::NoError());]]
+	[[swc 'json' 1;boost::json::array array;
+        for(size_t i = 0; i < result->Size(); ++i)
+	    array.push_back((*result)[i]["[[mov 'name';]]"].To<[[mov 'type';]]>());
+
+	callback(std::move(array), Error::NoError());]]
+	[[swc 'json' 2;boost::json::object object;
+	[[itr 'fields' '\n';
+	if((*result)[0]["[[mov 'name';]]"].IsNull())
+	    object.emplace("[[mov 'name';]]", nullptr);
+        else
+	    object.emplace("[[mov 'name';]]", (*result)[0]["[[mov 'name';]]"].To<[[mov 'type';]]>());]]
+
+	callback(std::move(object), Error::NoError());]]
+	[[swc 'json' 3;boost::json::array array;
+        for(size_t i = 0; i < result->Size(); ++i)
+        {
+            boost::json::object object;
+	    [[itr 'fields' '\n';
+	    if((*result)[i]["[[mov 'name';]]"].IsNull())
+		object.emplace("[[mov 'name';]]", nullptr);
+	    else
+		object.emplace("[[mov 'name';]]", (*result)[i]["[[mov 'name';]]"].To<[[mov 'type';]]>());]]
+            
+            array.push_back(std::move(object));
+        }
+	callback(std::move(array), Error::NoError());]]
+        }
+        catch(const std::exception& ex)
+        {
+            callback({}, Error::UserError(ex.what()));
+        }
+    });
+}
+
+}
+
